@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Wellness Journal</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1, h2 { color: #2563eb; }
+    h1 { border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
+    .updated { color: #666; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: December 27, 2024</p>
+
+  <h2>Overview</h2>
+  <p>
+    Wellness Journal is a personal, open-source CLI application designed for individual use.
+    This privacy policy explains how the application handles your data.
+  </p>
+
+  <h2>Data Collection</h2>
+  <p>Wellness Journal accesses the following data from connected services:</p>
+  <ul>
+    <li><strong>Whoop:</strong> Recovery scores, HRV, sleep data, and strain metrics</li>
+    <li><strong>Google Calendar:</strong> Event titles, times, and durations for the current day</li>
+  </ul>
+
+  <h2>Data Storage</h2>
+  <p>
+    <strong>All data is stored locally on your device.</strong> Specifically:
+  </p>
+  <ul>
+    <li>Journal entries are stored in a SQLite database in <code>~/.wellness-journal/</code></li>
+    <li>OAuth tokens are encrypted and stored locally</li>
+    <li>Daily notes are saved as Markdown files in your Obsidian vault</li>
+  </ul>
+
+  <h2>Data Sharing</h2>
+  <p>
+    Wellness Journal does <strong>not</strong>:
+  </p>
+  <ul>
+    <li>Send your data to any external servers (except to fetch from Whoop/Google)</li>
+    <li>Share your data with third parties</li>
+    <li>Use your data for analytics or advertising</li>
+    <li>Store any data outside your local machine</li>
+  </ul>
+
+  <h2>Third-Party Services</h2>
+  <p>
+    When you connect Whoop or Google Calendar, you authorize the application to access
+    your data from those services. Their respective privacy policies apply:
+  </p>
+  <ul>
+    <li><a href="https://www.whoop.com/privacy/">Whoop Privacy Policy</a></li>
+    <li><a href="https://policies.google.com/privacy">Google Privacy Policy</a></li>
+  </ul>
+
+  <h2>Data Deletion</h2>
+  <p>
+    To delete all your data:
+  </p>
+  <ul>
+    <li>Remove the <code>~/.wellness-journal/</code> directory</li>
+    <li>Delete the Obsidian daily notes folder</li>
+    <li>Revoke access in your Whoop and Google account settings</li>
+  </ul>
+
+  <h2>Open Source</h2>
+  <p>
+    This application is open source. You can review the code to verify these privacy practices
+    at <a href="https://github.com/bflynn2/wellness-journal">github.com/bflynn2/wellness-journal</a>.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    For questions about this privacy policy, please open an issue on the GitHub repository.
+  </p>
+</body>
+</html>

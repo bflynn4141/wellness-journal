@@ -3,6 +3,13 @@
  *
  * Handles the OAuth flow for Whoop and Google APIs,
  * including token refresh and local server for callbacks.
+ *
+ * Flow with GitHub Pages relay:
+ * 1. Browser opens to OAuth provider with redirect_uri = GitHub Pages URL
+ * 2. User authorizes
+ * 3. Provider redirects to GitHub Pages callback.html?code=XXX
+ * 4. callback.html JavaScript redirects to localhost:8585/callback?code=XXX
+ * 5. Local server receives code and exchanges for tokens
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
@@ -11,9 +18,18 @@ import open from 'open';
 import type { OAuthTokens } from '../types.js';
 
 const REDIRECT_PORT = 8585;
-const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
+const LOCAL_CALLBACK_URI = `http://localhost:${REDIRECT_PORT}/callback`;
 
-export { REDIRECT_URI };
+/**
+ * Get the OAuth redirect URI from environment or default
+ * For Whoop/Google registration, use the GitHub Pages URL
+ * The callback page will relay to localhost
+ */
+export function getRedirectUri(): string {
+  return process.env.OAUTH_REDIRECT_URL || LOCAL_CALLBACK_URI;
+}
+
+export { LOCAL_CALLBACK_URI as REDIRECT_URI };
 
 interface OAuthConfig {
   authorizationUrl: string;
@@ -89,9 +105,11 @@ export async function performOAuthFlow(config: OAuthConfig): Promise<OAuthTokens
 
     server.listen(REDIRECT_PORT, () => {
       // Build authorization URL
+      // Use the configured redirect URI (GitHub Pages) for the OAuth provider
+      const redirectUri = getRedirectUri();
       const authUrl = new URL(config.authorizationUrl);
       authUrl.searchParams.set('client_id', config.clientId);
-      authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('scope', config.scopes.join(' '));
       authUrl.searchParams.set('access_type', 'offline'); // For refresh token
@@ -126,7 +144,7 @@ async function exchangeCodeForTokens(
       client_id: config.clientId,
       client_secret: config.clientSecret,
       code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: getRedirectUri(), // Must match the redirect_uri used in authorization
     }),
   });
 

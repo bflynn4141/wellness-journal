@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wellness Journal - Authorization</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 2rem;
+      text-align: center;
+    }
+    h1 { color: #2563eb; }
+    .status {
+      padding: 2rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+    }
+    .success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .loading {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+    .code-display {
+      background: #f3f4f6;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      word-break: break-all;
+      margin: 1rem 0;
+    }
+    .instructions {
+      text-align: left;
+      background: #fefce8;
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>🌅 Wellness Journal</h1>
+
+  <div id="content">
+    <div class="status loading">
+      <div class="spinner"></div>
+      <p>Completing authorization...</p>
+    </div>
+  </div>
+
+  <script>
+    // Get URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const error = params.get('error');
+    const state = params.get('state');
+
+    const contentDiv = document.getElementById('content');
+
+    if (error) {
+      // Show error
+      contentDiv.innerHTML = `
+        <div class="status error">
+          <h2>❌ Authorization Failed</h2>
+          <p>Error: ${error}</p>
+          <p>Please close this window and try again.</p>
+        </div>
+      `;
+    } else if (code) {
+      // Try to redirect to local server first
+      const localUrl = 'http://localhost:8585/callback?' + window.location.search.slice(1);
+
+      // Create a hidden iframe to attempt local redirect
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = localUrl;
+      document.body.appendChild(iframe);
+
+      // Also try direct redirect after a short delay
+      setTimeout(() => {
+        // Show success with manual instructions as fallback
+        contentDiv.innerHTML = `
+          <div class="status success">
+            <h2>✅ Authorization Successful!</h2>
+            <p>Redirecting to your local app...</p>
+          </div>
+          <div class="instructions">
+            <strong>If you're not automatically redirected:</strong>
+            <p>The CLI should have received the authorization. Check your terminal.</p>
+            <p>If not, copy this URL and paste it in your terminal when prompted:</p>
+            <div class="code-display">${window.location.href}</div>
+          </div>
+        `;
+
+        // Try window redirect
+        window.location.href = localUrl;
+      }, 500);
+    } else {
+      // No code or error
+      contentDiv.innerHTML = `
+        <div class="status error">
+          <h2>⚠️ No Authorization Code</h2>
+          <p>This page is used for OAuth callbacks.</p>
+          <p>Please start the authorization from the CLI with: <code>wellness-journal setup</code></p>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

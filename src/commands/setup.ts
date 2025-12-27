@@ -12,7 +12,7 @@ import { getConfig, checkIntegrations, validateConfig } from '../config.js';
 import { authenticateWhoop, isWhoopAuthenticated } from '../integrations/whoop.js';
 import { authenticateGoogle, isGoogleAuthenticated } from '../integrations/calendar.js';
 import { initDatabase } from '../db/sqlite.js';
-import { REDIRECT_URI } from '../utils/auth.js';
+import { getRedirectUri, REDIRECT_URI } from '../utils/auth.js';
 
 export async function runSetup(): Promise<void> {
   console.log('\n');
@@ -42,6 +42,7 @@ export async function runSetup(): Promise<void> {
   console.log(`  Google Calendar: ${integrations.google ? chalk.green('✓ Connected') : chalk.yellow('○ Not connected')}`);
   console.log(`  Claude API:      ${integrations.claude ? chalk.green('✓ Configured') : chalk.yellow('○ Not configured')}`);
   console.log(`  Obsidian Vault:  ${chalk.blue(config.obsidianVaultPath)}`);
+  console.log(`  OAuth Redirect:  ${chalk.blue(getRedirectUri())}`);
   console.log('');
 
   if (missing.length > 0) {
@@ -106,15 +107,18 @@ async function setupWhoop(): Promise<void> {
 
   const config = getConfig();
 
+  const redirectUri = getRedirectUri();
+
   if (!config.whoopClientId || !config.whoopClientSecret) {
     console.log(chalk.yellow('\n⚠️  Whoop API credentials not found in environment.'));
     console.log('');
     console.log('To set up Whoop:');
     console.log('1. Go to https://developer.whoop.com');
     console.log('2. Create a new application');
-    console.log(`3. Set the redirect URI to: ${chalk.cyan(REDIRECT_URI)}`);
-    console.log('4. Copy the Client ID and Client Secret');
-    console.log('5. Add them to your .env file:');
+    console.log(`3. Set the redirect URI to: ${chalk.cyan(redirectUri)}`);
+    console.log(`4. Set the privacy policy URL to your GitHub Pages URL`);
+    console.log('5. Copy the Client ID and Client Secret');
+    console.log('6. Add them to your .env file:');
     console.log(chalk.gray('   WHOOP_CLIENT_ID=your_client_id'));
     console.log(chalk.gray('   WHOOP_CLIENT_SECRET=your_client_secret'));
     console.log('');
@@ -157,6 +161,8 @@ async function setupGoogle(): Promise<void> {
 
   const config = getConfig();
 
+  const googleRedirectUri = getRedirectUri();
+
   if (!config.googleClientId || !config.googleClientSecret) {
     console.log(chalk.yellow('\n⚠️  Google API credentials not found in environment.'));
     console.log('');
@@ -164,8 +170,8 @@ async function setupGoogle(): Promise<void> {
     console.log('1. Go to https://console.cloud.google.com');
     console.log('2. Create a new project (or select existing)');
     console.log('3. Enable the Google Calendar API');
-    console.log('4. Create OAuth 2.0 credentials (Desktop app)');
-    console.log(`5. Add ${chalk.cyan(REDIRECT_URI)} to authorized redirect URIs`);
+    console.log('4. Create OAuth 2.0 credentials (Web application type)');
+    console.log(`5. Add ${chalk.cyan(googleRedirectUri)} to authorized redirect URIs`);
     console.log('6. Copy the Client ID and Client Secret');
     console.log('7. Add them to your .env file:');
     console.log(chalk.gray('   GOOGLE_CLIENT_ID=your_client_id'));
