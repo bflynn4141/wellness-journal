@@ -1,0 +1,161 @@
+---
+date: {{date}}
+type: daily-journal
+{{#if hasWhoop}}
+{{#if whoop.hasRecovery}}
+recovery_score: {{whoop.recovery.score}}
+hrv: {{whoop.recovery.hrv}}
+rhr: {{whoop.recovery.rhr}}
+{{/if}}
+{{#if whoop.hasSleep}}
+sleep_minutes: {{whoop.sleep.qualityMinutes}}
+sleep_efficiency: {{whoop.sleep.efficiency}}
+{{/if}}
+{{#if whoop.hasStrain}}
+strain: {{whoop.strain.score}}
+{{/if}}
+{{/if}}
+{{#if hasMorning}}
+energy_rating: {{morning.energyRating}}
+mood: {{morning.mood}}
+{{/if}}
+tags: [daily, journal, wellness]
+---
+
+# {{dateFormatted}}
+
+## 🌅 Morning Check-in
+
+{{#if hasWhoop}}
+### Body Data
+
+| Metric | Value | 7-Day Avg | Trend |
+|--------|-------|-----------|-------|
+{{#if whoop.hasRecovery}}
+| {{whoop.recovery.emoji}} Recovery | **{{whoop.recovery.score}}%** | {{round stats.avgRecovery}}% | {{trendArrow stats.recoveryTrend}} |
+| ❤️ HRV | **{{round whoop.recovery.hrv}}ms** | {{round stats.avgHrv}}ms | {{trendArrow stats.hrvTrend}} |
+| 💓 RHR | **{{whoop.recovery.rhr}} bpm** | - | - |
+{{/if}}
+{{#if whoop.hasSleep}}
+| 😴 Sleep | **{{whoop.sleep.qualityFormatted}}** | {{formatSleep stats.avgSleep}} | {{trendArrow stats.sleepTrend}} |
+{{/if}}
+{{#if whoop.hasStrain}}
+| 🔥 Strain | **{{round whoop.strain.score 1}}/21** | - | - |
+{{/if}}
+
+{{#if whoop.hasSleep}}
+**Sleep Details:** {{whoop.sleep.efficiency}}% efficiency | Deep: {{whoop.sleep.stages.deep}}m | REM: {{whoop.sleep.stages.rem}}m | Light: {{whoop.sleep.stages.light}}m
+{{/if}}
+
+{{#if whoop.strain.hasWorkouts}}
+**Activities:** {{whoop.strain.workoutList}}
+{{/if}}
+{{else}}
+*No Whoop data available - connect Whoop with `wellness-journal setup`*
+{{/if}}
+
+---
+
+## 🪞 Reflection
+
+### How I'm Feeling
+- **Energy (1-10):** {{morning.energyRating}}
+- **Mood:** {{morning.moodEmoji}} {{morning.moodFormatted}}
+- **Sleep Quality (subjective):** {{morning.sleepReflection}}
+
+### Yesterday
+**What went well:**
+{{morning.yesterdayWin}}
+
+**What was challenging:**
+{{morning.yesterdayChallenge}}
+
+{{#if morning.dynamicQuestions}}
+### Dynamic Reflections
+{{#each morning.dynamicQuestions}}
+{{{this}}}
+
+{{/each}}
+{{/if}}
+
+{{#if morning.patterns}}
+### 💡 Patterns & Insights
+{{morning.patterns}}
+{{/if}}
+
+---
+
+## 🎯 Intentions
+
+### Today's Priority
+> {{morning.oneThing}}
+
+### Movement Plan
+{{#if hasWhoop}}Based on my {{whoop.recovery.score}}% recovery: {{/if}}**{{morning.movementFormatted}}**
+
+### What Would Make Today a Win
+{{morning.successMetric}}
+
+---
+
+{{#if hasCalendar}}
+## 📅 Today's Schedule
+
+| Time | Event | Duration |
+|------|-------|----------|
+{{#each calendar.events}}
+| {{startFormatted}} | {{typeEmoji}} {{title}} | {{durationFormatted}} |
+{{/each}}
+
+**Summary:** {{calendar.summary.totalEvents}} events | {{calendar.meetingTimeFormatted}} in meetings | {{calendar.freeBlockFormatted}} longest free block
+
+{{else}}
+## 📅 Today's Schedule
+*No calendar data available - connect Google Calendar with `wellness-journal setup`*
+{{/if}}
+
+---
+
+## 📓 Evening Reflection
+
+{{#if hasEvening}}
+### Did I accomplish my #1 priority?
+{{evening.priorityEmoji}} **{{#ifEquals evening.priorityCompleted "yes"}}Yes{{/ifEquals}}{{#ifEquals evening.priorityCompleted "partial"}}Partially{{/ifEquals}}{{#ifEquals evening.priorityCompleted "no"}}No{{/ifEquals}}**
+
+### What actually happened today
+{{evening.eveningReflection}}
+
+### Gratitude
+{{#each evening.gratitude}}
+{{math @index "+" 1}}. {{this}}
+{{/each}}
+
+### Tomorrow I want to remember
+{{evening.tomorrowRemember}}
+
+{{else}}
+<!-- Fill this in tonight with `wellness-journal evening` -->
+
+### Did I accomplish my #1 priority?
+- [ ] Yes
+- [ ] Partially
+- [ ] No
+
+### What actually happened today
+
+
+### Gratitude
+1.
+2.
+3.
+
+### Tomorrow I want to remember
+
+{{/if}}
+
+---
+
+## 🔗 Links
+- [[{{yesterday}}|← Yesterday]]
+- [[{{tomorrow}}|Tomorrow →]]
+- [[{{weekNumber}}|This Week]]

@@ -1,0 +1,50 @@
+{
+  "name": "wellness-journal",
+  "version": "0.1.0",
+  "description": "Daily wellness journal integrating Whoop, Google Calendar, and AI-powered reflections",
+  "type": "module",
+  "bin": {
+    "wellness-journal": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "morning": "tsx src/index.ts morning",
+    "setup": "tsx src/index.ts setup",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "whoop",
+    "wellness",
+    "journal",
+    "obsidian",
+    "health",
+    "quantified-self"
+  ],
+  "author": "Brian Flynn",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "better-sqlite3": "^11.6.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "conf": "^13.0.1",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7",
+    "handlebars": "^4.7.8",
+    "inquirer": "^12.1.0",
+    "open": "^10.1.0",
+    "ora": "^8.1.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
