@@ -22,6 +22,7 @@ import {
 } from './questions.js';
 import { getWhoopDailyData, isWhoopAuthenticated } from '../integrations/whoop.js';
 import { getCalendarEvents, isGoogleAuthenticated, formatTime, formatDuration } from '../integrations/calendar.js';
+import { generateMorningInsights, isClaudeConfigured } from '../integrations/claude.js';
 import { getHistoricalStats, saveMorningEntry, saveEveningEntry, getDailyEntry } from '../db/sqlite.js';
 import type { MorningEntry, EveningEntry, WhoopDailyData, CalendarDay, HistoricalStats } from '../types.js';
 
@@ -97,6 +98,23 @@ export async function runMorningRoutine(): Promise<void> {
   // Display today's calendar
   if (calendarData) {
     displayTodayCalendar(calendarData);
+  }
+
+  // Generate AI insights if Claude is configured
+  if (isClaudeConfigured() && (whoopData || calendarData)) {
+    const insightSpinner = ora('Getting personalized insights...').start();
+    try {
+      const insights = await generateMorningInsights(whoopData, historicalStats, calendarData);
+      insightSpinner.succeed('Coach insights ready');
+
+      console.log('\n');
+      console.log(chalk.yellow.bold('🧠 Your Coach Says'));
+      console.log(chalk.gray('─'.repeat(50)));
+      console.log(chalk.white(insights));
+    } catch (error) {
+      insightSpinner.fail('Could not generate insights');
+      console.log(chalk.gray(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
 
   // Generate dynamic questions
