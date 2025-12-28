@@ -363,10 +363,12 @@ export async function getWhoopDailyData(date: string): Promise<WhoopDailyData> {
 
 /**
  * Check if Whoop is authenticated
+ * Note: Whoop may not provide refresh tokens, so we check for access token
  */
 export function isWhoopAuthenticated(): boolean {
   const tokens = getTokens('whoop');
-  return !!tokens?.refreshToken;
+  // Check for access token - Whoop uses long-lived tokens and may not provide refresh tokens
+  return !!tokens?.accessToken;
 }
 
 /**

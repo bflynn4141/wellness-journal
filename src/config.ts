@@ -89,7 +89,8 @@ export function checkIntegrations(): {
   const creds = getCredentials();
 
   return {
-    whoop: !!(config.whoopClientId && config.whoopClientSecret && creds.whoop?.refreshToken),
+    // Whoop uses long-lived access tokens and may not provide refresh tokens
+    whoop: !!(config.whoopClientId && config.whoopClientSecret && creds.whoop?.accessToken),
     google: !!(config.googleClientId && config.googleClientSecret && creds.google?.refreshToken),
     claude: !!config.anthropicApiKey,
   };

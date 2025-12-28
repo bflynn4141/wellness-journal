@@ -178,15 +178,21 @@ async function exchangeCodeForTokens(
 
   const data = (await response.json()) as {
     access_token: string;
-    refresh_token: string;
+    refresh_token?: string;
     expires_in: number;
     token_type: string;
     scope?: string;
   };
 
+  // Debug: Log the raw response to understand what OAuth provider returns
+  console.log('[OAuth Debug] Token response keys:', Object.keys(data));
+  if (!data.refresh_token) {
+    console.log('[OAuth Debug] Warning: No refresh_token in response');
+  }
+
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    refreshToken: data.refresh_token || '',
     expiresAt: Date.now() + data.expires_in * 1000,
     tokenType: data.token_type,
     scope: data.scope,
