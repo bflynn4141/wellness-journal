@@ -135,7 +135,7 @@ export async function getRecovery(date: string): Promise<WhoopRecovery | null> {
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 1);
 
-    const data = await whoopFetch<WhoopRecoveryResponse>('/v1/recovery', {
+    const data = await whoopFetch<WhoopRecoveryResponse>('/v2/recovery', {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     });
@@ -204,7 +204,7 @@ export async function getSleep(date: string): Promise<WhoopSleep | null> {
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 1);
 
-    const data = await whoopFetch<WhoopSleepResponse>('/v1/activity/sleep', {
+    const data = await whoopFetch<WhoopSleepResponse>('/v2/activity/sleep', {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     });
@@ -303,7 +303,7 @@ export async function getStrain(date: string): Promise<WhoopStrain | null> {
     endDate.setDate(endDate.getDate() + 1);
 
     // Get cycle (daily strain)
-    const cycleData = await whoopFetch<WhoopCycleResponse>('/v1/cycle', {
+    const cycleData = await whoopFetch<WhoopCycleResponse>('/v2/cycle', {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     });
@@ -315,7 +315,7 @@ export async function getStrain(date: string): Promise<WhoopStrain | null> {
     const cycle = cycleData.records[0];
 
     // Get workouts
-    const workoutData = await whoopFetch<WhoopWorkoutResponse>('/v1/activity/workout', {
+    const workoutData = await whoopFetch<WhoopWorkoutResponse>('/v2/activity/workout', {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     });
