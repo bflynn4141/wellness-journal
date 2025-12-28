@@ -12,7 +12,9 @@ import chalk from 'chalk';
 import { runSetup } from './commands/setup.js';
 import { runMorning } from './commands/morning.js';
 import { runEvening } from './commands/evening.js';
+import { runWeekly } from './commands/weekly.js';
 import { runStatus } from './commands/status.js';
+import { runRemind, showScheduleSetup } from './commands/remind.js';
 
 const program = new Command();
 
@@ -58,6 +60,18 @@ program
   });
 
 program
+  .command('weekly')
+  .description('Generate weekly review with pattern analysis')
+  .action(async () => {
+    try {
+      await runWeekly();
+    } catch (error) {
+      console.error(chalk.red('Weekly review failed:'), error);
+      process.exit(1);
+    }
+  });
+
+program
   .command('status')
   .description('Show current configuration and stats')
   .action(async () => {
@@ -65,6 +79,26 @@ program
       await runStatus();
     } catch (error) {
       console.error(chalk.red('Status check failed:'), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('remind')
+  .description('Send notification reminders (for scheduling)')
+  .option('-s, --silent', 'Suppress console output (for cron/launchd)')
+  .option('--setup', 'Show instructions for scheduling automated reminders')
+  .action(async (options: { silent?: boolean; setup?: boolean }) => {
+    try {
+      if (options.setup) {
+        showScheduleSetup();
+      } else {
+        await runRemind(options.silent ?? false);
+      }
+    } catch (error) {
+      if (!options.silent) {
+        console.error(chalk.red('Reminder failed:'), error);
+      }
       process.exit(1);
     }
   });

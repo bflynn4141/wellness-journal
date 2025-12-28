@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
 import dayjs from 'dayjs';
 
-import { getDailyNotePath } from '../config.js';
+import { getDailyNotePath, getConfig } from '../config.js';
 import { getDailyEntry, getHistoricalStats } from '../db/sqlite.js';
 import { formatTime, formatDuration } from '../integrations/calendar.js';
 import {
@@ -100,6 +100,132 @@ export function saveDailyNote(date: string): string {
   writeFileSync(notePath, content, 'utf-8');
 
   return notePath;
+}
+
+/**
+ * Save a weekly note to the Obsidian vault
+ */
+export function saveWeeklyNote(
+  year: number,
+  weekNum: number,
+  entries: DailyEntry[],
+  stats: HistoricalStats
+): string {
+  const config = getConfig();
+  const weeklyFolder = join(config.obsidianVaultPath, 'Weekly');
+
+  // Ensure directory exists
+  if (!existsSync(weeklyFolder)) {
+    mkdirSync(weeklyFolder, { recursive: true });
+  }
+
+  const filename = `${year}-W${String(weekNum).padStart(2, '0')}.md`;
+  const notePath = join(weeklyFolder, filename);
+
+  const content = generateWeeklyNote(year, weekNum, entries, stats);
+  writeFileSync(notePath, content, 'utf-8');
+
+  return notePath;
+}
+
+/**
+ * Generate a weekly note
+ */
+function generateWeeklyNote(
+  year: number,
+  weekNum: number,
+  entries: DailyEntry[],
+  stats: HistoricalStats
+): string {
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+
+  // Calculate completion stats
+  const daysWithEntries = entries.length;
+  const completedPriorities = entries.filter(e => e.evening?.priorityCompleted === 'yes').length;
+  const partialPriorities = entries.filter(e => e.evening?.priorityCompleted === 'partial').length;
+  const totalWithEvening = entries.filter(e => e.evening).length;
+
+  // Collect wins and challenges
+  const wins = entries.filter(e => e.yesterdayWin).map(e => e.yesterdayWin);
+  const challenges = entries.filter(e => e.yesterdayChallenge).map(e => e.yesterdayChallenge);
+  const gratitudes = entries.flatMap(e => e.evening?.gratitude || []).filter(Boolean);
+
+  // Build daily table rows
+  const dailyRows = sorted.map(e => {
+    const day = dayjs(e.date).format('ddd M/D');
+    const recovery = e.whoopData?.recovery?.score ?? '-';
+    const sleep = e.whoopData?.sleep?.qualityDuration
+      ? (e.whoopData.sleep.qualityDuration / 60).toFixed(1)
+      : '-';
+    const energy = e.energyRating ?? '-';
+    const mood = MOOD_OPTIONS.find(m => m.value === e.mood)?.emoji || '-';
+    const priority = e.evening?.priorityCompleted === 'yes' ? '✅' :
+                     e.evening?.priorityCompleted === 'partial' ? '🔶' :
+                     e.evening?.priorityCompleted === 'no' ? '❌' : '⬜';
+
+    return `| ${day} | ${recovery}% | ${sleep}h | ${energy}/10 | ${mood} | ${priority} |`;
+  }).join('\n');
+
+  return `---
+type: weekly-review
+year: ${year}
+week: ${weekNum}
+days_tracked: ${daysWithEntries}
+avg_recovery: ${stats.avgRecovery.toFixed(0)}
+avg_hrv: ${stats.avgHrv.toFixed(0)}
+avg_sleep: ${(stats.avgSleep / 60).toFixed(1)}
+avg_energy: ${stats.avgEnergy.toFixed(1)}
+tags: [weekly, review, wellness]
+---
+
+# Week ${weekNum}, ${year}
+
+## 📊 Weekly Summary
+
+| Metric | Average | Trend |
+|--------|---------|-------|
+| 🔋 Recovery | ${stats.avgRecovery.toFixed(0)}% | ${getTrendArrow(stats.recoveryTrend)} |
+| ❤️ HRV | ${stats.avgHrv.toFixed(0)}ms | ${getTrendArrow(stats.hrvTrend)} |
+| 😴 Sleep | ${(stats.avgSleep / 60).toFixed(1)}h | ${getTrendArrow(stats.sleepTrend)} |
+| ⚡ Energy | ${stats.avgEnergy.toFixed(1)}/10 | - |
+
+**Days Tracked:** ${daysWithEntries}/7
+**Priority Completion:** ${completedPriorities}/${totalWithEvening} done, ${partialPriorities} partial
+
+---
+
+## 📅 Daily Breakdown
+
+| Day | Recovery | Sleep | Energy | Mood | Priority |
+|-----|----------|-------|--------|------|----------|
+${dailyRows}
+
+---
+
+## 💭 Reflections
+
+### Wins This Week
+${wins.length > 0 ? wins.map(w => `- ${w}`).join('\n') : '- (none recorded)'}
+
+### Challenges
+${challenges.length > 0 ? challenges.map(c => `- ${c}`).join('\n') : '- (none recorded)'}
+
+### Gratitude
+${gratitudes.length > 0 ? gratitudes.slice(0, 5).map(g => `- ${g}`).join('\n') : '- (none recorded)'}
+
+---
+
+## 🎯 Next Week Focus
+
+<!-- What will you focus on next week? -->
+
+
+---
+
+## 🔗 Links
+
+${sorted.map(e => `- [[${e.date}|${dayjs(e.date).format('ddd M/D')}]]`).join('\n')}
+`;
 }
 
 /**

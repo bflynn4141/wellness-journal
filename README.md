@@ -1,37 +1,110 @@
 # Wellness Journal
 
-A daily wellness journal CLI that integrates Whoop health metrics, Google Calendar, and AI-powered reflections, outputting beautiful daily notes to Obsidian.
+A personal wellness CLI that integrates **Whoop health metrics**, **Google Calendar**, and **Claude AI** to create a structured daily journaling practice with automatic **Obsidian** output.
+
+## Why This Exists
+
+Most wellness apps are passive — they show you data but don't help you *do* anything with it. This tool creates an active feedback loop:
+
+1. **Morning**: See yesterday's biometrics → Reflect → Set one priority
+2. **Evening** (optional): Did you accomplish it? → Gratitude → Note for tomorrow
+3. **Weekly**: Pattern analysis → AI-powered coaching insights
+
+All data stays local (SQLite + Obsidian markdown). No cloud sync, no subscriptions.
+
+---
 
 ## Features
 
-- 📊 **Whoop Integration**: Automatically pulls recovery, HRV, sleep, and strain data
-- 📅 **Google Calendar**: Shows today's schedule and free time blocks
-- 🪞 **Structured Reflections**: Consistent questions for longitudinal pattern analysis
-- 🎯 **Intention Setting**: Daily priority and success metrics
-- 📝 **Obsidian Output**: Beautiful markdown daily notes with YAML frontmatter
-- 📈 **Pattern Detection**: Tracks trends and correlations over time
-- 🤖 **AI Insights** (coming soon): Claude-powered pattern analysis
+| Feature | Description |
+|---------|-------------|
+| **Whoop Integration** | Pulls recovery, HRV, sleep stages, strain, and workouts |
+| **Google Calendar** | Shows today's schedule with meeting load analysis |
+| **Claude AI Insights** | Personalized coaching based on your data and patterns |
+| **Habit Tracking** | Track daily habits with completion rates and streaks |
+| **Streak Gamification** | Visual streak counter with motivational messaging |
+| **Weekly Reviews** | Auto-generated summaries with week-over-week trends |
+| **Obsidian Notes** | Beautiful markdown daily/weekly notes with YAML frontmatter |
+| **Smart Reminders** | Desktop notifications that open your terminal automatically |
 
-## Installation
+---
+
+## Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/wellness-journal.git
+# Clone and install
+git clone https://github.com/bflynn4141/wellness-journal.git
 cd wellness-journal
-
-# Install dependencies
 npm install
 
-# Copy environment template
+# Configure integrations
 cp .env.example .env
+# Edit .env with your API credentials
 
-# Run setup
-npm run setup
+# Build and link globally
+npm run build
+npm link
+
+# Run setup wizard
+wellness-journal setup
+
+# Start your first check-in
+wellness-journal morning
 ```
+
+---
+
+## Commands
+
+### Daily Routines
+
+```bash
+# Morning check-in (8-10 min)
+wellness-journal morning
+
+# Evening reflection (3-5 min, optional)
+wellness-journal evening
+```
+
+### Reviews & Status
+
+```bash
+# Weekly summary with AI analysis
+wellness-journal weekly
+
+# Dashboard: streak, habits, averages
+wellness-journal status
+```
+
+### Reminders
+
+```bash
+# Check if reminder needed now
+wellness-journal remind
+
+# Setup automated daily reminders
+wellness-journal remind --setup
+```
+
+---
+
+## Morning Routine Flow
+
+1. **Yesterday's Data** — Recovery %, HRV, sleep duration, strain score
+2. **Today's Calendar** — Meetings, free blocks, schedule overview
+3. **AI Coach Insights** — Personalized advice based on your metrics
+4. **Reflection** — Energy, mood, what went well/challenging
+5. **Yesterday's Habits** — Catch-up if you skipped evening check-in
+6. **Intentions** — One priority, movement plan, success metric
+7. **Morning Habits** — Quick checkbox for habits like meditation
+
+If you run it again later, you'll see a summary of your entry instead of redoing everything.
+
+---
 
 ## Configuration
 
-Create a `.env` file with:
+Create a `.env` file:
 
 ```env
 # Whoop API (https://developer.whoop.com)
@@ -45,135 +118,170 @@ GOOGLE_CLIENT_SECRET=your_client_secret
 # Claude API - Optional (https://console.anthropic.com)
 ANTHROPIC_API_KEY=your_api_key
 
-# Obsidian vault path
-OBSIDIAN_VAULT_PATH=~/Documents/Obsidian/MyVault
+# Obsidian vault path (optional, defaults shown)
+OBSIDIAN_VAULT_PATH=~/Documents/Obsidian/Wellness-Journal
 ```
 
-## Usage
+---
 
-### Morning Routine
+## Automated Reminders
+
+The CLI can open your terminal and start the morning routine automatically at 8 AM.
+
+### macOS (launchd)
 
 ```bash
-npm run morning
-# or
-wellness-journal morning
+# Show setup instructions
+wellness-journal remind --setup
+
+# Or manually create the plist at:
+# ~/Library/LaunchAgents/com.wellness-journal.remind.plist
 ```
 
-The morning routine:
-1. Pulls yesterday's Whoop data (recovery, sleep, strain)
-2. Shows today's calendar
-3. Asks reflection questions
-4. Sets daily intentions
-5. Saves to database and generates Obsidian note
-
-### Evening Routine
+### Linux (cron)
 
 ```bash
-npm run evening
-# or
-wellness-journal evening
+# Add to crontab
+0 8 * * * wellness-journal remind --silent
 ```
 
-### Check Status
+---
 
-```bash
-wellness-journal status
+## Habit Tracking
+
+Default habits (customizable in the database):
+
+| Habit | Category | Emoji |
+|-------|----------|-------|
+| Meditation | Morning | 🧘 |
+| Gratitude practice | Morning | 🙏 |
+| Exercise | Anytime | 💪 |
+| Read | Evening | 📚 |
+| Journaled | Evening | ✍️ |
+| No alcohol | Evening | 🍷 |
+| No caffeine after 2pm | Evening | ☕ |
+| 8+ hours sleep goal | Evening | 😴 |
+
+Habits are logged per day and tracked in the status dashboard with completion percentages.
+
+---
+
+## Obsidian Integration
+
+Each check-in generates a markdown file:
+
+```
+~/Documents/Obsidian/Wellness-Journal/
+├── Daily/
+│   ├── 2025-12-27.md
+│   └── ...
+└── Weekly/
+    ├── 2025-W52.md
+    └── ...
 ```
 
-### Setup Integrations
+### YAML Frontmatter
 
-```bash
-npm run setup
-# or
-wellness-journal setup
-```
-
-## Daily Note Output
-
-Each day generates a markdown file in your Obsidian vault:
-
-```
-~/Obsidian/Wellness-Journal/Daily/2025-01-15.md
-```
-
-With YAML frontmatter for Dataview queries:
+Notes include structured frontmatter for Dataview queries:
 
 ```yaml
 ---
-date: 2025-01-15
+date: 2025-12-27
 recovery_score: 78
 hrv: 84
+sleep_minutes: 454
 energy_rating: 7
 mood: calm_focused
 tags: [daily, journal, wellness]
 ---
 ```
 
-## Question Framework
+### Example Dataview Query
 
-### Core Questions (always asked)
-- Energy rating (1-10)
-- Mood baseline
-- Sleep reflection
-- Yesterday's win
-- Yesterday's challenge
-- #1 priority for today
-- Movement intention
-- Success metric
+```dataview
+TABLE recovery_score, energy_rating, mood
+FROM "Daily"
+WHERE date >= date(today) - dur(7 days)
+SORT date DESC
+```
 
-### Dynamic Questions
-Generated based on:
-- Low recovery days
-- HRV trends
-- Sleep patterns
-- Day of week (weekend vs weekday)
-- High strain follow-ups
+---
+
+## Data Storage
+
+All data is stored locally:
+
+| Data | Location |
+|------|----------|
+| Journal entries | `~/.wellness-journal/wellness.db` (SQLite) |
+| OAuth tokens | `~/Library/Preferences/wellness-journal-nodejs/` (encrypted) |
+| Obsidian notes | Your configured vault path |
+
+No data leaves your machine except API calls to Whoop, Google, and Anthropic.
+
+---
+
+## Architecture
+
+```
+src/
+├── index.ts              # CLI entry point (Commander)
+├── config.ts             # Environment & credential management
+├── types.ts              # TypeScript interfaces
+├── db/
+│   └── sqlite.ts         # SQLite with better-sqlite3
+├── integrations/
+│   ├── whoop.ts          # Whoop API v2 client
+│   ├── calendar.ts       # Google Calendar client
+│   └── claude.ts         # Anthropic Claude client
+├── prompts/
+│   ├── questions.ts      # Question definitions & helpers
+│   └── engine.ts         # Interactive prompt flows
+├── obsidian/
+│   └── generator.ts      # Markdown note generation
+├── commands/
+│   ├── setup.ts          # Integration wizard
+│   ├── morning.ts        # Morning routine
+│   ├── evening.ts        # Evening routine
+│   ├── weekly.ts         # Weekly review
+│   ├── status.ts         # Dashboard
+│   └── remind.ts         # Notification system
+└── utils/
+    └── auth.ts           # OAuth flow handling
+```
+
+---
 
 ## Development
 
 ```bash
-# Run in development mode
+# Development mode (with tsx)
 npm run dev morning
 
-# Build
+# Build TypeScript
 npm run build
 
 # Type check
 npm run typecheck
 ```
 
-## Architecture
-
-```
-src/
-├── index.ts           # CLI entry point
-├── config.ts          # Configuration management
-├── types.ts           # TypeScript types
-├── db/
-│   └── sqlite.ts      # SQLite database layer
-├── integrations/
-│   ├── whoop.ts       # Whoop API client
-│   └── calendar.ts    # Google Calendar client
-├── prompts/
-│   ├── questions.ts   # Question definitions
-│   └── engine.ts      # CLI prompt flow
-├── obsidian/
-│   └── generator.ts   # Markdown generator
-├── commands/
-│   ├── setup.ts       # Setup wizard
-│   ├── morning.ts     # Morning routine
-│   ├── evening.ts     # Evening routine
-│   └── status.ts      # Status display
-└── utils/
-    └── auth.ts        # OAuth utilities
-```
+---
 
 ## Roadmap
 
-- [x] Phase 1: Core functionality (Whoop, Calendar, Obsidian)
-- [ ] Phase 2: Claude AI integration for pattern analysis
-- [ ] Phase 3: Weekly/monthly summaries
-- [ ] Phase 4: Web interface
+- [x] Core daily routines (morning/evening)
+- [x] Whoop + Google Calendar integration
+- [x] Claude AI coaching insights
+- [x] Habit tracking with streaks
+- [x] Weekly reviews with pattern analysis
+- [x] Automated desktop reminders
+- [x] Obsidian daily/weekly notes
+- [ ] Custom habit configuration via CLI
+- [ ] Monthly summaries
+- [ ] Export to CSV/JSON
+- [ ] Web dashboard (maybe)
+
+---
 
 ## License
 

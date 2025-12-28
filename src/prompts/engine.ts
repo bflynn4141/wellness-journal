@@ -23,7 +23,7 @@ import {
 import { getWhoopDailyData, isWhoopAuthenticated } from '../integrations/whoop.js';
 import { getCalendarEvents, isGoogleAuthenticated, formatTime, formatDuration } from '../integrations/calendar.js';
 import { generateMorningInsights, isClaudeConfigured } from '../integrations/claude.js';
-import { getHistoricalStats, saveMorningEntry, saveEveningEntry, getDailyEntry } from '../db/sqlite.js';
+import { getHistoricalStats, saveMorningEntry, saveEveningEntry, getDailyEntry, getActiveHabits, logHabit } from '../db/sqlite.js';
 import type { MorningEntry, EveningEntry, WhoopDailyData, CalendarDay, HistoricalStats } from '../types.js';
 
 // ============================================================================
@@ -52,7 +52,37 @@ export async function runMorningRoutine(): Promise<void> {
     ]);
 
     if (!overwrite) {
-      console.log(chalk.yellow('Keeping existing entry. Have a great day!'));
+      // Show a summary of what they entered
+      console.log('\n');
+      console.log(chalk.cyan.bold('📝 Today\'s Entry'));
+      console.log(chalk.gray('─'.repeat(50)));
+
+      if (existingEntry.whoopData?.recovery) {
+        console.log(`  🔋 Recovery: ${existingEntry.whoopData.recovery.score}%`);
+      }
+      console.log(`  ⚡ Energy: ${existingEntry.energyRating}/10`);
+      console.log(`  🎭 Mood: ${existingEntry.mood.replace('_', ' ')}`);
+
+      console.log('\n');
+      console.log(chalk.cyan.bold('🎯 Your Priority'));
+      console.log(chalk.gray('─'.repeat(50)));
+      console.log(`  "${existingEntry.oneThing}"`);
+      console.log(chalk.gray(`  Success: ${existingEntry.successMetric}`));
+
+      if (existingEntry.evening) {
+        console.log('\n');
+        console.log(chalk.green.bold('✓ Evening check-in complete'));
+        const status = existingEntry.evening.priorityCompleted === 'yes' ? '✅ Done' :
+                       existingEntry.evening.priorityCompleted === 'partial' ? '🔶 Partial' : '❌ No';
+        console.log(`  Priority: ${status}`);
+      } else {
+        console.log('\n');
+        console.log(chalk.yellow('○ Evening check-in pending'));
+        console.log(chalk.gray('  Run `wellness-journal evening` later to reflect'));
+      }
+
+      console.log('\n');
+      console.log(chalk.gray('Have a great day! 🌟'));
       return;
     }
   }
@@ -182,6 +212,43 @@ export async function runMorningRoutine(): Promise<void> {
     dynamicAnswers.push(`Q: ${dq.question}\nA: ${answer}`);
   }
 
+  // Check if yesterday's habits were logged (evening check-in)
+  const yesterdayEntry = getDailyEntry(yesterday);
+  const yesterdayHabitsLogged = yesterdayEntry?.evening?.eveningHabits &&
+    yesterdayEntry.evening.eveningHabits.length > 0;
+
+  if (!yesterdayHabitsLogged) {
+    // Get evening/anytime habits to ask about yesterday
+    const eveningHabits = getActiveHabits('evening');
+
+    if (eveningHabits.length > 0) {
+      console.log('\n');
+      console.log(chalk.yellow.bold('📋 Yesterday\'s Habits'));
+      console.log(chalk.gray('─'.repeat(50)));
+      console.log(chalk.gray('(You didn\'t log these last night - let\'s catch up!)'));
+
+      const { habitsDone } = await inquirer.prompt<{ habitsDone: number[] }>([
+        {
+          type: 'checkbox',
+          name: 'habitsDone',
+          message: 'Which habits did you complete yesterday?',
+          choices: eveningHabits.map((h) => ({
+            name: `${h.emoji} ${h.name}`,
+            value: h.id,
+          })),
+        },
+      ]);
+
+      // Log yesterday's habits
+      for (const habit of eveningHabits) {
+        logHabit(yesterday, habit.id, habitsDone.includes(habit.id));
+      }
+
+      const completedCount = habitsDone.length;
+      console.log(chalk.gray(`  ✓ Logged ${completedCount}/${eveningHabits.length} habits for yesterday`));
+    }
+  }
+
   console.log('\n');
   console.log(chalk.cyan.bold('🎯 Intentions'));
   console.log(chalk.gray('─'.repeat(50)));
@@ -219,6 +286,38 @@ export async function runMorningRoutine(): Promise<void> {
     },
   ]);
 
+  // Morning habit check-in
+  const morningHabits = getActiveHabits('morning');
+  let completedMorningHabits: Array<{ habitId: number; completed: boolean }> = [];
+
+  if (morningHabits.length > 0) {
+    console.log('\n');
+    console.log(chalk.cyan.bold('🌅 Morning Habits'));
+    console.log(chalk.gray('─'.repeat(50)));
+
+    const { habitsDone } = await inquirer.prompt<{ habitsDone: number[] }>([
+      {
+        type: 'checkbox',
+        name: 'habitsDone',
+        message: 'Which morning habits did you complete?',
+        choices: morningHabits.map((h) => ({
+          name: `${h.emoji} ${h.name}`,
+          value: h.id,
+        })),
+      },
+    ]);
+
+    // Log all morning habits
+    completedMorningHabits = morningHabits.map((h) => ({
+      habitId: h.id,
+      completed: habitsDone.includes(h.id),
+    }));
+
+    for (const habit of morningHabits) {
+      logHabit(today, habit.id, habitsDone.includes(habit.id));
+    }
+  }
+
   // Create and save entry
   const entry: MorningEntry = {
     date: today,
@@ -233,6 +332,7 @@ export async function runMorningRoutine(): Promise<void> {
     oneThing: intentions.oneThing,
     movementIntention: intentions.movementIntention as MorningEntry['movementIntention'],
     successMetric: intentions.successMetric,
+    morningHabits: completedMorningHabits.length > 0 ? completedMorningHabits : undefined,
     dynamicQuestions: dynamicAnswers.length > 0 ? dynamicAnswers : undefined,
   };
 
@@ -336,6 +436,47 @@ export async function runEveningRoutine(): Promise<void> {
     },
   ]);
 
+  // Evening habit check-in
+  const eveningHabits = getActiveHabits('evening');
+  let completedEveningHabits: Array<{ habitId: number; completed: boolean }> = [];
+
+  if (eveningHabits.length > 0) {
+    console.log('\n');
+    console.log(chalk.magenta.bold('🌙 Today\'s Habits'));
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.gray('Check off the habits you completed today:'));
+
+    const { habitsDone } = await inquirer.prompt<{ habitsDone: number[] }>([
+      {
+        type: 'checkbox',
+        name: 'habitsDone',
+        message: 'Which habits did you complete today?',
+        choices: eveningHabits.map((h) => ({
+          name: `${h.emoji} ${h.name}`,
+          value: h.id,
+        })),
+      },
+    ]);
+
+    // Log all evening habits
+    completedEveningHabits = eveningHabits.map((h) => ({
+      habitId: h.id,
+      completed: habitsDone.includes(h.id),
+    }));
+
+    for (const habit of eveningHabits) {
+      logHabit(today, habit.id, habitsDone.includes(habit.id));
+    }
+
+    // Show completion summary
+    const completedCount = habitsDone.length;
+    const totalCount = eveningHabits.length;
+    const percentage = Math.round((completedCount / totalCount) * 100);
+
+    console.log('\n');
+    console.log(chalk.gray(`  Today's score: ${chalk.bold(completedCount + '/' + totalCount)} habits (${percentage}%)`));
+  }
+
   const entry: EveningEntry = {
     date: today,
     timestamp: new Date().toISOString(),
@@ -343,6 +484,7 @@ export async function runEveningRoutine(): Promise<void> {
     eveningReflection: answers.eveningReflection,
     gratitude: [answers.gratitude1, answers.gratitude2, answers.gratitude3].filter(Boolean),
     tomorrowRemember: answers.tomorrowRemember,
+    eveningHabits: completedEveningHabits.length > 0 ? completedEveningHabits : undefined,
   };
 
   const saveSpinner = ora('Saving entry...').start();
@@ -369,8 +511,8 @@ function displayYesterdayData(whoopData: WhoopDailyData | null, stats: Historica
   console.log(chalk.gray('─'.repeat(50)));
 
   if (!whoopData || (!whoopData.recovery && !whoopData.sleep && !whoopData.strain)) {
-    console.log(chalk.gray('  No Whoop data available'));
-    console.log(chalk.gray('  (Connect Whoop with `wellness-journal setup`)'));
+    console.log(chalk.gray('  No Whoop data available for yesterday'));
+    console.log(chalk.gray('  (Data syncs a few hours after waking - check back later)'));
     return;
   }
 

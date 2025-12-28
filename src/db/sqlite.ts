@@ -6,6 +6,7 @@
  */
 
 import Database from 'better-sqlite3';
+import dayjs from 'dayjs';
 import { getDatabasePath } from '../config.js';
 import type {
   DailyEntry,
@@ -96,6 +97,40 @@ export function initDatabase(): Database.Database {
     );
 
     CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date);
+
+    -- Habits configuration table
+    CREATE TABLE IF NOT EXISTS habits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      emoji TEXT DEFAULT '✓',
+      category TEXT CHECK(category IN ('morning', 'evening', 'anytime')) DEFAULT 'anytime',
+      active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- Daily habit logs
+    CREATE TABLE IF NOT EXISTS habit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      habit_id INTEGER NOT NULL,
+      completed INTEGER DEFAULT 0,
+      notes TEXT,
+      FOREIGN KEY (habit_id) REFERENCES habits(id),
+      UNIQUE(date, habit_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON habit_logs(date);
+
+    -- Insert default habits if table is empty
+    INSERT OR IGNORE INTO habits (name, emoji, category) VALUES
+      ('Meditation', '🧘', 'morning'),
+      ('Exercise', '💪', 'anytime'),
+      ('No alcohol', '🍷', 'evening'),
+      ('Read', '📚', 'evening'),
+      ('Journaled', '✍️', 'evening'),
+      ('8+ hours sleep goal', '😴', 'evening'),
+      ('No caffeine after 2pm', '☕', 'evening'),
+      ('Gratitude practice', '🙏', 'morning');
 
     -- Detected patterns table
     CREATE TABLE IF NOT EXISTS patterns (
@@ -389,6 +424,163 @@ export function getRecentPatterns(limit: number = 5): Pattern[] {
     dataPoints: JSON.parse(row.data_points as string),
     confidence: row.confidence as number,
   }));
+}
+
+// ============================================================================
+// Habit Management
+// ============================================================================
+
+export interface Habit {
+  id: number;
+  name: string;
+  emoji: string;
+  category: 'morning' | 'evening' | 'anytime';
+  active: boolean;
+}
+
+export interface HabitLog {
+  habitId: number;
+  habitName: string;
+  emoji: string;
+  completed: boolean;
+  notes?: string;
+}
+
+/**
+ * Get all active habits
+ */
+export function getActiveHabits(category?: 'morning' | 'evening' | 'anytime'): Habit[] {
+  const database = initDatabase();
+
+  let query = 'SELECT * FROM habits WHERE active = 1';
+  const params: unknown[] = [];
+
+  if (category) {
+    query += ' AND (category = ? OR category = ?)';
+    params.push(category, 'anytime');
+  }
+
+  query += ' ORDER BY category, name';
+
+  const rows = database.prepare(query).all(...params) as Record<string, unknown>[];
+
+  return rows.map(row => ({
+    id: row.id as number,
+    name: row.name as string,
+    emoji: row.emoji as string,
+    category: row.category as Habit['category'],
+    active: row.active === 1,
+  }));
+}
+
+/**
+ * Log a habit completion for a date
+ */
+export function logHabit(date: string, habitId: number, completed: boolean, notes?: string): void {
+  const database = initDatabase();
+
+  database.prepare(`
+    INSERT INTO habit_logs (date, habit_id, completed, notes)
+    VALUES (@date, @habitId, @completed, @notes)
+    ON CONFLICT(date, habit_id) DO UPDATE SET
+      completed = @completed,
+      notes = @notes
+  `).run({
+    date,
+    habitId,
+    completed: completed ? 1 : 0,
+    notes: notes || null,
+  });
+}
+
+/**
+ * Get habit logs for a date
+ */
+export function getHabitLogs(date: string): HabitLog[] {
+  const database = initDatabase();
+
+  const rows = database.prepare(`
+    SELECT h.id as habit_id, h.name, h.emoji, COALESCE(hl.completed, 0) as completed, hl.notes
+    FROM habits h
+    LEFT JOIN habit_logs hl ON h.id = hl.habit_id AND hl.date = ?
+    WHERE h.active = 1
+    ORDER BY h.category, h.name
+  `).all(date) as Record<string, unknown>[];
+
+  return rows.map(row => ({
+    habitId: row.habit_id as number,
+    habitName: row.name as string,
+    emoji: row.emoji as string,
+    completed: row.completed === 1,
+    notes: row.notes as string | undefined,
+  }));
+}
+
+/**
+ * Get habit completion stats for a date range
+ */
+export function getHabitStats(days: number = 7): { habitName: string; emoji: string; completionRate: number; streak: number }[] {
+  const database = initDatabase();
+
+  const rows = database.prepare(`
+    SELECT
+      h.name,
+      h.emoji,
+      COUNT(CASE WHEN hl.completed = 1 THEN 1 END) as completed_count,
+      COUNT(DISTINCT hl.date) as total_days
+    FROM habits h
+    LEFT JOIN habit_logs hl ON h.id = hl.habit_id
+      AND hl.date >= date('now', '-' || ? || ' days')
+    WHERE h.active = 1
+    GROUP BY h.id
+    ORDER BY h.category, h.name
+  `).all(days) as Record<string, unknown>[];
+
+  return rows.map(row => {
+    const total = row.total_days as number;
+    const completed = row.completed_count as number;
+
+    return {
+      habitName: row.name as string,
+      emoji: row.emoji as string,
+      completionRate: total > 0 ? (completed / days) * 100 : 0,
+      streak: 0, // TODO: Calculate actual streak
+    };
+  });
+}
+
+/**
+ * Get current streak for all check-ins
+ */
+export function getCurrentStreak(): number {
+  const database = initDatabase();
+
+  const rows = database.prepare(`
+    SELECT DISTINCT date FROM daily_entries
+    WHERE date <= date('now')
+    ORDER BY date DESC
+    LIMIT 60
+  `).all() as { date: string }[];
+
+  let streak = 0;
+  let checkDate = dayjs();
+
+  for (let i = 0; i < 60; i++) {
+    const dateStr = checkDate.format('YYYY-MM-DD');
+    const hasEntry = rows.some(r => r.date === dateStr);
+
+    if (hasEntry) {
+      streak++;
+      checkDate = checkDate.subtract(1, 'day');
+    } else if (i === 0) {
+      // Today might not have an entry yet
+      checkDate = checkDate.subtract(1, 'day');
+    } else {
+      break;
+    }
+  }
+
+  return streak;
 }
 
 /**

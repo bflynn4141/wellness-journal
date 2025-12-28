@@ -127,6 +127,9 @@ export interface MorningEntry {
   movementIntention: MovementIntention;
   successMetric: string;
 
+  // Habit tracking
+  morningHabits?: Array<{ habitId: number; completed: boolean }>;
+
   // AI-generated content
   patterns?: string;
   dynamicQuestions?: string[];
@@ -139,6 +142,9 @@ export interface EveningEntry {
   eveningReflection: string;
   gratitude: string[];
   tomorrowRemember: string;
+
+  // Habit tracking
+  eveningHabits?: Array<{ habitId: number; completed: boolean }>;
 }
 
 export interface DailyEntry extends MorningEntry {
@@ -167,6 +173,35 @@ export interface Pattern {
   description: string;
   dataPoints: string[]; // array of dates
   confidence: number;
+}
+
+// ============================================================================
+// Habit Tracking Types
+// ============================================================================
+
+export interface Habit {
+  id: number;
+  name: string;
+  emoji: string;
+  category: 'morning' | 'evening' | 'anytime';
+  active: boolean;
+}
+
+export interface HabitLog {
+  id: number;
+  date: string;
+  habitId: number;
+  habitName: string;
+  emoji: string;
+  completed: boolean;
+  notes?: string;
+}
+
+export interface HabitStats {
+  habitName: string;
+  emoji: string;
+  completionRate: number;
+  streak: number;
 }
 
 // ============================================================================
