@@ -14,6 +14,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import { URL } from 'url';
+import { randomBytes } from 'crypto';
 import open from 'open';
 import type { OAuthTokens } from '../types.js';
 
@@ -44,6 +45,9 @@ interface OAuthConfig {
  * Opens browser for user authorization and waits for callback
  */
 export async function performOAuthFlow(config: OAuthConfig): Promise<OAuthTokens> {
+  // Generate a random state for CSRF protection
+  const state = randomBytes(32).toString('hex');
+
   return new Promise((resolve, reject) => {
     // Create temporary local server to receive OAuth callback
     const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -52,6 +56,24 @@ export async function performOAuthFlow(config: OAuthConfig): Promise<OAuthTokens
       if (url.pathname === '/callback') {
         const code = url.searchParams.get('code');
         const error = url.searchParams.get('error');
+        const returnedState = url.searchParams.get('state');
+
+        // Verify state parameter to prevent CSRF attacks
+        if (returnedState !== state) {
+          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.end(`
+            <html>
+              <body style="font-family: system-ui; text-align: center; padding: 50px;">
+                <h1>❌ Authorization Failed</h1>
+                <p>Invalid state parameter. This may be a security issue.</p>
+                <p>Please try again.</p>
+              </body>
+            </html>
+          `);
+          server.close();
+          reject(new Error('OAuth state mismatch - possible CSRF attack'));
+          return;
+        }
 
         if (error) {
           res.writeHead(400, { 'Content-Type': 'text/html' });
@@ -112,6 +134,7 @@ export async function performOAuthFlow(config: OAuthConfig): Promise<OAuthTokens
       authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('scope', config.scopes.join(' '));
+      authUrl.searchParams.set('state', state); // CSRF protection
       authUrl.searchParams.set('access_type', 'offline'); // For refresh token
       authUrl.searchParams.set('prompt', 'consent'); // Force consent to get refresh token
 
